@@ -1,8 +1,7 @@
 ﻿using LLearningBuildingWebAPIsWithASPNETCore2.Models;
-using Microsoft.AspNetCore.Http;
+using LLearningBuildingWebAPIsWithASPNETCore2.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -14,21 +13,22 @@ namespace LLearningBuildingWebAPIsWithASPNETCore2.Controllers
     [Route("api/Customers")]
     public class CustomersController : Controller
     {
-        private readonly H_Plus_SportsContext _context;
-        public CustomersController(H_Plus_SportsContext context)
+        private readonly ICustomerRepository _customerRepository;
+
+        public CustomersController(ICustomerRepository customerRepository)
         {
-            _context = context;
+            _customerRepository = customerRepository;
         }
 
         [HttpGet]
         public IActionResult GetCustomer()
         {
-            var results = new ObjectResult(_context.Customer)
+            var results = new ObjectResult(_customerRepository.GetAll())
             {
                 StatusCode = (int)HttpStatusCode.OK
             };
 
-            Request.HttpContext.Response.Headers.Add("X-Total-Count", _context.Customer.Count().ToString());
+            Request.HttpContext.Response.Headers.Add("X-Total-Count", _customerRepository.GetAll().Count().ToString());
 
             return results;
         }
@@ -36,20 +36,15 @@ namespace LLearningBuildingWebAPIsWithASPNETCore2.Controllers
         [HttpGet("{id}", Name = "GetCustomer")]
         public async Task<IActionResult> GetCustomer([FromRoute]int id)
         {
-            if (CustomerExists(id))
+            if (await CustomerExists(id))
             {
-                var customer = await _context.Customer.SingleOrDefaultAsync(m => m.CustomerId == id);
+                var customer = await _customerRepository.Find(id);
                 return Ok(customer);
             }
             else
             {
                 return NotFound();
             }
-        }
-
-        private bool CustomerExists(int id)
-        {
-            return _context.Customer.Any(c => c.CustomerId == id);
         }
 
         [HttpPost]
@@ -59,8 +54,7 @@ namespace LLearningBuildingWebAPIsWithASPNETCore2.Controllers
             {
                 return BadRequest(ModelState);
             }
-            _context.Customer.Add(customer);
-            await _context.SaveChangesAsync();
+            await _customerRepository.Add(customer);
             return CreatedAtAction("GetCustomer", new { id = customer.CustomerId }, customer);
         }
 
@@ -68,15 +62,24 @@ namespace LLearningBuildingWebAPIsWithASPNETCore2.Controllers
         [Produces(typeof(Customer))]
         public async Task<IActionResult> PutCustomer([FromRoute] int id, [FromBody] Customer customer)
         {
-            _context.Entry(customer).State = EntityState.Modified;
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            if (id != customer.CustomerId)
+            {
+                return BadRequest();
+            }
+
             try
             {
-                await _context.SaveChangesAsync();
+                await _customerRepository.Update(customer);
                 return Ok(customer);
             }
             catch (DbUpdateConcurrencyException ex)
             {
-                if (!CustomerExists(id))
+                if (!await CustomerExists(id))
                 {
                     return NotFound();
                 }
@@ -90,10 +93,13 @@ namespace LLearningBuildingWebAPIsWithASPNETCore2.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> DeleteCustomer([FromRoute] int id)
         {
-            var customer = await _context.Customer.SingleOrDefaultAsync(m => m.CustomerId == id);
-            _context.Customer.Remove(customer);
-            await _context.SaveChangesAsync();
+            var customer = await _customerRepository.Remove(id);
             return Ok(customer);
+        }
+
+        private async Task<bool> CustomerExists(int id)
+        {
+            return await _customerRepository.Exist(id);
         }
     }
 }
