@@ -31,7 +31,9 @@ namespace LLearningBuildingWebAPIsWithASPNETCore2.Repositories
 
         public async Task<Customer> Find(int id)
         {
-            return await _context.Customer.Include(customer => customer.Order).SingleOrDefaultAsync();
+            return await _context.Customer
+                .Include(customer => customer.Order)
+                .SingleOrDefaultAsync(customer => customer.CustomerId == id);
         }
 
         public IEnumerable<Customer> GetAll()
