@@ -82,7 +82,7 @@ namespace LLearningBuildingWebAPIsWithASPNETCore2.Controllers
                 }
                 else
                 {
-                    throw;
+                    throw ex;
                 }
             }
         }
