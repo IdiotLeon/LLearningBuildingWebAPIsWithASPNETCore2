@@ -65,11 +65,26 @@ namespace LLearningBuildingWebAPIsWithASPNETCore2.Controllers
         }
 
         [HttpPut("{id}")]
+        [Produces(typeof(Customer))]
         public async Task<IActionResult> PutCustomer([FromRoute] int id, [FromBody] Customer customer)
         {
             _context.Entry(customer).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-            return Ok(customer);
+            try
+            {
+                await _context.SaveChangesAsync();
+                return Ok(customer);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                if (!CustomerExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
         }
 
         [HttpPut("{id}")]
